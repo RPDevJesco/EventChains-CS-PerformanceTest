@@ -45,7 +45,7 @@ public class ValidationPipelineIntegrationTests
         context.Set("customer_data", customerData);
 
         // Act
-        var result = await pipeline.ExecuteWithResultsAsync();
+        var result = pipeline.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue();
@@ -76,7 +76,7 @@ public class ValidationPipelineIntegrationTests
         context.Set("customer_data", customerData);
 
         // Act
-        var result = await pipeline.ExecuteWithResultsAsync();
+        var result = pipeline.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeFalse();
@@ -102,7 +102,7 @@ public class ValidationPipelineIntegrationTests
         context.Set("customer_data", customerData);
 
         // Act
-        var result = await pipeline.ExecuteWithResultsAsync();
+        var result = pipeline.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue();
@@ -135,7 +135,7 @@ public class ValidationPipelineIntegrationTests
         context.Set("customer_data", customerData);
 
         // Act
-        var result = await pipeline.ExecuteWithResultsAsync();
+        var result = pipeline.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue();
@@ -164,7 +164,7 @@ public class ValidationPipelineIntegrationTests
         {
             var context = pipeline.GetContext();
             context.Set("customer_data", customer);
-            var result = await pipeline.ExecuteWithResultsAsync();
+            var result = pipeline.ExecuteWithResultsAsync();
             results.Add(result);
         }
 
@@ -194,7 +194,7 @@ public class ValidationPipelineIntegrationTests
         context.Set("customer_data", customerData);
 
         // Act
-        var result = await pipeline.ExecuteWithResultsAsync();
+        var result = pipeline.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue();
@@ -216,7 +216,7 @@ public class ValidationPipelineIntegrationTests
 
         // Act
         var startTime = DateTime.UtcNow;
-        var result = await pipeline.ExecuteWithResultsAsync();
+        var result = pipeline.ExecuteWithResultsAsync();
         var endTime = DateTime.UtcNow;
         var duration = (endTime - startTime).TotalMilliseconds;
 
@@ -237,7 +237,7 @@ public class ValidationPipelineIntegrationTests
         context.Set("customer_data", customerData);
 
         // Act
-        var result = await pipeline.ExecuteWithResultsAsync();
+        var result = pipeline.ExecuteWithResultsAsync();
 
         // Assert
         result.EventResults.Should().NotBeEmpty();
@@ -273,7 +273,7 @@ public class ValidationPipelineIntegrationTests
             var context = pipeline.GetContext();
             context.Set("customer_data", customer);
 
-            var result = await pipeline.ExecuteWithResultsAsync();
+            var result = pipeline.ExecuteWithResultsAsync();
 
             result.GetGrade().Should().BeOneOf(expectedGrades);
         }
@@ -300,7 +300,7 @@ public class ValidationPipelineIntegrationTests
             var pipeline = BuildTestPipeline();
             var context = pipeline.GetContext();
             context.Set("customer_data", customer);
-            return await pipeline.ExecuteWithResultsAsync();
+            return pipeline.ExecuteWithResultsAsync();
         });
 
         var results = await Task.WhenAll(tasks);

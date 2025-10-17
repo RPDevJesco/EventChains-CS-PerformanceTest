@@ -22,7 +22,7 @@
 
         public override async Task<EventResult> ExecuteAsync(IEventContext context)
         {
-            var result = await _subChain.ExecuteWithResultsAsync();
+            var result = _subChain.ExecuteWithResultsAsync();
 
             if (result.Success)
             {

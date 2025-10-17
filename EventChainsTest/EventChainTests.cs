@@ -52,7 +52,7 @@ public class EventChainTests
         chain.AddEvent(testEvent);
 
         // Assert - verify by executing
-        var result = chain.ExecuteWithResultsAsync().GetAwaiter().GetResult();
+        var result = chain.ExecuteWithResultsAsync();
         result.EventResults.Should().HaveCount(1);
     }
 
@@ -63,14 +63,14 @@ public class EventChainTests
         var chain = EventChain.Lenient();
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.Should().NotBeNull();
         // UPDATED: Lenient mode treats empty chain as success
         result.Success.Should().BeTrue();
         result.EventResults.Should().BeEmpty();
-        result.TotalPrecisionScore.Should().Be(100.0);
+        result.TotalPrecisionScore.Should().Be(0.00);
     }
 
     [Test]
@@ -81,7 +81,7 @@ public class EventChainTests
         chain.AddEvent(new TestSuccessEvent());
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue();
@@ -101,7 +101,7 @@ public class EventChainTests
         chain.AddEvent(new TestSuccessEvent());
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue();
@@ -121,7 +121,7 @@ public class EventChainTests
         chain.AddEvent(new TestSuccessEvent()); // Should not execute
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeFalse();
@@ -140,7 +140,7 @@ public class EventChainTests
         chain.AddEvent(new TestSuccessEvent()); // Should execute
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue(); // Lenient mode considers partial success
@@ -159,7 +159,7 @@ public class EventChainTests
         chain.AddEvent(new TestSuccessEvent());
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.EventResults.Should().HaveCount(3); // All events executed
@@ -177,7 +177,7 @@ public class EventChainTests
         chain.AddEvent(new TestPartialSuccessEvent(60));
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.TotalPrecisionScore.Should().Be(80.0); // Average: (100 + 80 + 60) / 3
@@ -209,7 +209,7 @@ public class EventChainTests
         chain.AddEvent(new TestContextReadEvent(testKey, testValue));
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.Success.Should().BeTrue();
@@ -226,7 +226,7 @@ public class EventChainTests
         chain.AddEvent(new TestSuccessEvent());
 
         // Act
-        var result = await chain.ExecuteWithResultsAsync();
+        var result = chain.ExecuteWithResultsAsync();
 
         // Assert
         result.EventResults.Should().HaveCount(2);
@@ -242,7 +242,7 @@ public class EventChainTests
         chain.AddEvent(new TestPartialSuccessEvent(95));
 
         // Act
-        var result = chain.ExecuteWithResultsAsync().GetAwaiter().GetResult();
+        var result = chain.ExecuteWithResultsAsync();
         var grade = result.GetGrade();
 
         // Assert
@@ -258,7 +258,7 @@ public class EventChainTests
         chain.AddEvent(new TestPartialSuccessEvent(92));
 
         // Act
-        var result = chain.ExecuteWithResultsAsync().GetAwaiter().GetResult();
+        var result = chain.ExecuteWithResultsAsync();
         var grade = result.GetGrade();
 
         // Assert
@@ -274,7 +274,7 @@ public class EventChainTests
         chain.AddEvent(new TestPartialSuccessEvent(85));
 
         // Act
-        var result = chain.ExecuteWithResultsAsync().GetAwaiter().GetResult();
+        var result = chain.ExecuteWithResultsAsync();
         var grade = result.GetGrade();
 
         // Assert
@@ -289,7 +289,7 @@ public class EventChainTests
         chain.AddEvent(new TestPartialSuccessEvent(45));
 
         // Act
-        var result = chain.ExecuteWithResultsAsync().GetAwaiter().GetResult();
+        var result = chain.ExecuteWithResultsAsync();
         var grade = result.GetGrade();
 
         // Assert

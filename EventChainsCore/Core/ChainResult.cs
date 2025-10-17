@@ -27,12 +27,23 @@
         /// <summary>
         /// Number of events that succeeded.
         /// </summary>
-        public int SuccessCount => EventResults.Count(r => r.Success);
+        public int SuccessCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < EventResults.Count; i++)
+                {
+                    if (EventResults[i].Success) count++;
+                }
+                return count;
+            }
+        }
 
         /// <summary>
         /// Number of events that failed.
         /// </summary>
-        public int FailureCount => EventResults.Count(r => !r.Success);
+        public int FailureCount => EventResults.Count - SuccessCount;
 
         /// <summary>
         /// Total number of events attempted.

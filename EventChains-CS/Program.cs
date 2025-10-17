@@ -264,7 +264,7 @@ namespace EventChains_CS
             var context = pipeline.GetContext();
             context.Set("customer_data", data);
 
-            var result = await pipeline.ExecuteWithResultsAsync();
+            var result = pipeline.ExecuteWithResultsAsync();
 
             if (!quietMode)
             {

@@ -1,6 +1,9 @@
-﻿using EventChainsCore;
+﻿using EventChains.Tests.Utilities;
+
 using EventChains_CS;
 using EventChains_CS.Validation_Events;
+
+using EventChainsCore;
 
 namespace EventChains.Tests.Validation;
 
@@ -77,6 +80,34 @@ public class ValidateRequiredFieldsTests
         // Assert
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("FirstName");
+    }
+
+    [Test]
+    public void Diagnostic_SyncAllocationComparison()
+    {
+        var iterations = 1000;
+        var customer = TestDataFactory.CreateValidCustomer();
+
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+
+        var pipeline = EventChain.Lenient();
+        pipeline.AddEvent(new ValidateRequiredFields());
+        pipeline.AddEvent(new ValidateEmailFormat());
+
+        for (int i = 0; i < iterations; i++)
+        {
+            var context = pipeline.GetContext();
+            context.Set("customer_data", customer);
+            pipeline.ExecuteAsync();  // Now sync!
+        }
+
+        var allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
+        var totalAllocated = allocatedAfter - allocatedBefore;
+
+        Console.WriteLine($"Sync version allocations:");
+        Console.WriteLine($"  Total: {totalAllocated / 1024.0:F2} KB");
+        Console.WriteLine($"  Per iteration: {totalAllocated / iterations:F2} bytes");
+        Console.WriteLine($"  Per event: {totalAllocated / (iterations * 2):F2} bytes");
     }
 
     [Test]

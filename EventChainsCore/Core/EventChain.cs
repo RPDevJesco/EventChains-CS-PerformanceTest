@@ -16,7 +16,7 @@
         /// <summary>
         /// Delegate for the execution pipeline.
         /// </summary>
-        public delegate Task<EventResult> ExecuteDelegate(IChainableEvent evt, IEventContext ctx);
+        public delegate EventResult ExecuteDelegate(IChainableEvent evt, IEventContext ctx);
 
         /// <summary>
         /// Gets or sets the fault tolerance mode for this chain.
@@ -99,15 +99,16 @@
         /// Executes all events in the chain with graduated precision tracking.
         /// Returns a ChainResult containing individual event results and aggregated metrics.
         /// </summary>
-        public async Task<ChainResult> ExecuteWithResultsAsync()
+        public ChainResult ExecuteWithResultsAsync()
         {
             var result = new ChainResult(_context);
             var startTime = DateTime.UtcNow;
 
             // Build the middleware pipeline
-            ExecuteDelegate pipeline = async (evt, ctx) =>
+            ExecuteDelegate pipeline = (evt, ctx) =>
             {
-                return await evt.ExecuteAsync(ctx);
+                // Synchronously wait for the async method to complete
+                return evt.ExecuteAsync(ctx).GetAwaiter().GetResult();
             };
 
             for (int i = _middlewares.Count - 1; i >= 0; i--)
@@ -123,7 +124,7 @@
 
                 try
                 {
-                    var eventResult = await pipeline(chainEvent, _context);
+                    var eventResult = pipeline(chainEvent, _context);
                     result.EventResults.Add(eventResult);
 
                     // Determine if we should continue based on fault tolerance mode
@@ -157,9 +158,9 @@
         /// Legacy method for backwards compatibility.
         /// Executes the chain and throws on failure in STRICT mode.
         /// </summary>
-        public async Task ExecuteAsync()
+        public void ExecuteAsync()
         {
-            var result = await ExecuteWithResultsAsync();
+            var result = ExecuteWithResultsAsync();
 
             if (!result.Success && _faultToleranceMode == FaultToleranceMode.Strict)
             {
@@ -199,11 +200,27 @@
 
         private double CalculateTotalPrecisionScore(ChainResult result)
         {
-            if (result.TotalCount == 0) return 100.0;
+            int count = result.EventResults.Count;
+            if (count == 0) return 0.0;
 
-            // Weighted average of individual precision scores
-            var totalScore = result.EventResults.Sum(r => r.PrecisionScore);
-            return totalScore / result.TotalCount;
+            // Manual sum - no LINQ allocations
+            double totalScore = 0;
+            for (int i = 0; i < count; i++)
+            {
+                totalScore += result.EventResults[i].PrecisionScore;
+            }
+
+            return totalScore / count;
+        }
+
+        Task<ChainResult> IEventChain.ExecuteWithResultsAsync()
+        {
+            throw new NotImplementedException();
+        }
+
+        Task IEventChain.ExecuteAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }
