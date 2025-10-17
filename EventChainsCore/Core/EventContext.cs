@@ -1,4 +1,4 @@
-﻿namespace EventChains.Core
+﻿namespace EventChainsCore
 {
     /// <summary>
     /// Provides a concrete implementation of the event context with enhanced features

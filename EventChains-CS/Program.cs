@@ -1,284 +1,330 @@
-﻿using EventChains.Core;
-using EventChains.Core.Events;
+﻿using System.Text.Json;
+using EventChainsCore;
+using EventChains_CS.Validation_Events;
 
-namespace EventChains.Examples.GraduatedQTE
+namespace EventChains_CS
 {
     /// <summary>
-    /// Demonstrates the power of EventChains for creating graduated precision QTE systems.
-    /// This is the "killer example" showing how EventChains enables mechanics that are
-    /// prohibitively complex with traditional approaches.
+    /// REAL-WORLD PROBLEM: Multi-Stage Customer Data Validation & Enrichment Pipeline
+    /// 
+    /// SCENARIO: You receive customer data from various sources (API, CSV imports, web forms, Mockaroo).
+    /// Each record needs validation, enrichment, and routing based on data quality.
+    /// 
+    /// REQUIREMENTS:
+    /// 1. Validate required fields (strict - must pass)
+    /// 2. Validate optional fields (lenient - can fail)
+    /// 3. Enrich with external data (can fail, affects quality score)
+    /// 4. Calculate risk score (depends on validation results)
+    /// 5. Route to appropriate processing queue based on quality
+    /// 6. Generate detailed audit trail with quality metrics
+    /// 
+    /// TRADITIONAL CODE PROBLEMS:
+    /// - 500+ lines of nested try-catch blocks
+    /// - Manual quality score tracking across methods
+    /// - Complex branching logic for routing decisions
+    /// - Tight coupling between validation stages
+    /// - Difficult to test individual validators
+    /// - Hard to add/remove validation steps
+    /// - Inconsistent error handling
+    /// 
+    /// EVENTCHAINS SOLUTION:
+    /// - 150 lines with clean separation
+    /// - Automatic quality score aggregation
+    /// - Each validator independently testable
+    /// - Easy to modify pipeline
+    /// - Consistent graduated precision scoring
+    /// - Built-in audit trail
     /// </summary>
     class Program
     {
         static async Task Main(string[] args)
         {
-            Console.WriteLine("╔═══════════════════════════════════════════════════════╗");
-            Console.WriteLine("║   EventChains - Graduated Precision QTE Demo         ║");
-            Console.WriteLine("╚═══════════════════════════════════════════════════════╝");
+            Console.WriteLine("═══════════════════════════════════════════════════════");
+            Console.WriteLine("  EventChains - Enterprise Data Validation Example");
+            Console.WriteLine("  (Loads data from Mockaroo JSON file)");
+            Console.WriteLine("═══════════════════════════════════════════════════════\n");
+
+            // Check for quiet mode and DNS flag
+            bool quietMode = args.Contains("--quiet") || args.Contains("-q");
+            bool skipDns = args.Contains("--no-dns");
+
+            // Load customer data from JSON file
+            List<CustomerData> customers;
+
+            try
+            {
+                customers = await LoadCustomerDataFromFile("customers.json");
+                Console.WriteLine($"✓ Loaded {customers.Count} customer records from customers.json\n");
+            }
+            catch (FileNotFoundException)
+            {
+                Console.WriteLine("⚠ customers.json not found. Using sample data instead.\n");
+                Console.WriteLine("  To use Mockaroo data:");
+                Console.WriteLine("  1. Go to https://mockaroo.com");
+                Console.WriteLine("  2. Create fields matching CustomerData structure");
+                Console.WriteLine("  3. Generate JSON and save as customers.json\n");
+                customers = GetSampleCustomerData();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠ Error loading JSON file: {ex.Message}");
+                Console.WriteLine("  Using sample data instead.\n");
+                customers = GetSampleCustomerData();
+            }
+
+            if (quietMode)
+            {
+                Console.WriteLine("Running in QUIET mode (use --verbose for detailed output)");
+            }
+            else
+            {
+                Console.WriteLine("Tip: Use --quiet or -q flag for faster processing without per-record output");
+            }
+
+            if (skipDns)
+            {
+                Console.WriteLine("DNS validation DISABLED (use without --no-dns to enable)");
+                ValidateEmailFormat.SkipDnsLookup = true;
+            }
+            else
+            {
+                Console.WriteLine("Tip: Use --no-dns flag to skip DNS lookups for 10x faster email validation");
+            }
+
             Console.WriteLine();
 
-            Console.WriteLine("This demo shows how EventChains enables LAYERED PRECISION");
-            Console.WriteLine("instead of traditional binary pass/fail QTE systems.");
-            Console.WriteLine();
+            // Process each customer through the validation pipeline
+            var results = new List<(CustomerData customer, ChainResult result)>();
 
-            // Demo 1: Simple layered precision
-            await DemoSimpleLayeredPrecision();
-            Console.WriteLine("\n" + new string('═', 55) + "\n");
+            var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Demo 2: Context-adaptive difficulty
-            await DemoAdaptiveDifficulty();
-            Console.WriteLine("\n" + new string('═', 55) + "\n");
+            for (int i = 0; i < customers.Count; i++)
+            {
+                var customer = customers[i];
+                var result = await ProcessCustomerData(customer, $"Record {i + 1}/{customers.Count}", quietMode);
+                results.Add((customer, result));
 
-            // Demo 3: Combo chain with graduated success
-            await DemoComboSystem();
+                if (!quietMode && i < customers.Count - 1)
+                {
+                    Console.WriteLine("\n" + new string('─', 55) + "\n");
+                }
+                else if (quietMode && (i + 1) % 100 == 0)
+                {
+                    // Progress indicator in quiet mode
+                    Console.Write($"\rProcessed {i + 1}/{customers.Count} records...");
+                }
+            }
+
+            if (quietMode)
+            {
+                Console.WriteLine(); // New line after progress indicator
+            }
+
+            totalStopwatch.Stop();
+
+            // Summary statistics
+            Console.WriteLine("\n" + new string('═', 55));
+            Console.WriteLine("SUMMARY STATISTICS");
+            Console.WriteLine(new string('═', 55) + "\n");
+
+            PrintSummaryStatistics(results, totalStopwatch.ElapsedMilliseconds);
 
             Console.WriteLine("\n\nPress any key to exit...");
             Console.ReadKey();
         }
 
-        /// <summary>
-        /// Demo 1: Simple Layered Precision QTE
-        /// Traditional: Hit or Miss
-        /// EventChains: Outer ring, middle ring, or perfect center
-        /// </summary>
-        static async Task DemoSimpleLayeredPrecision()
+        static async Task<List<CustomerData>> LoadCustomerDataFromFile(string filename)
         {
-            Console.WriteLine("📍 DEMO 1: Simple Layered Precision QTE");
-            Console.WriteLine("   Traditional: Binary (hit/miss)");
-            Console.WriteLine("   EventChains: Graduated (outer/middle/center)\n");
+            var json = await File.ReadAllTextAsync(filename);
+            var customers = JsonSerializer.Deserialize<List<CustomerData>>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
 
-            // Create a best-effort chain - try all layers
-            var qteChain = EventChain.BestEffort();
-
-            // Add three precision layers (outermost to innermost)
-            qteChain.AddEvent(new PrecisionRingEvent(
-                name: "Outer Ring",
-                windowMs: 1000,
-                score: 50,
-                effect: "normal_attack"
-            ));
-
-            qteChain.AddEvent(new PrecisionRingEvent(
-                name: "Middle Ring",
-                windowMs: 500,
-                score: 100,
-                effect: "heavy_attack"
-            ));
-
-            qteChain.AddEvent(new PrecisionRingEvent(
-                name: "Center Ring",
-                windowMs: 200,
-                score: 200,
-                effect: "critical_strike"
-            ));
-
-            // Simulate different player timing performances
-            await SimulateQTEInput("Perfect timing", qteChain, 150);
-            await SimulateQTEInput("Good timing", qteChain, 450);
-            await SimulateQTEInput("OK timing", qteChain, 800);
-            await SimulateQTEInput("Too slow", qteChain, 1100);
+            return customers ?? new List<CustomerData>();
         }
 
-        /// <summary>
-        /// Demo 2: Context-Adaptive Difficulty
-        /// Dynamically add/remove layers based on player skill
-        /// </summary>
-        static async Task DemoAdaptiveDifficulty()
+        static List<CustomerData> GetSampleCustomerData()
         {
-            Console.WriteLine("📍 DEMO 2: Adaptive Difficulty");
-            Console.WriteLine("   Beginners: 1 layer (forgiving)");
-            Console.WriteLine("   Intermediate: 2 layers (skill expression)");
-            Console.WriteLine("   Expert: 3 layers (mastery required)\n");
-
-            var playerSkills = new[] { 1, 5, 9 }; // Beginner, Intermediate, Expert
-            var skillLabels = new[] { "Beginner", "Intermediate", "Expert" };
-
-            for (int i = 0; i < playerSkills.Length; i++)
+            return new List<CustomerData>
             {
-                Console.WriteLine($"   Player Skill Level: {playerSkills[i]}/10 ({skillLabels[i]})");
-                var adaptiveChain = CreateAdaptiveQTE(playerSkills[i]);
+                // High quality data
+                new CustomerData
+                {
+                    Email = "john.doe@company.com",
+                    Phone = "+1 202-555-0123",
+                    FirstName = "John",
+                    LastName = "Doe",
+                    Age = 35,
+                    Country = "US",
+                    CompanyName = "Acme Corp",
+                    Revenue = 1_000_000
+                },
+                // Medium quality - missing optional fields
+                new CustomerData
+                {
+                    Email = "jane@example.com",
+                    Phone = "555-0199",
+                    FirstName = "Jane",
+                    LastName = "Smith",
+                    Age = 28,
+                    Country = "US"
+                },
+                // Low quality - barely passes required validations
+                new CustomerData
+                {
+                    Email = "test@test.com",
+                    Phone = "invalid",
+                    FirstName = "T",
+                    LastName = "User",
+                    Age = 150,
+                    Country = "XX"
+                }
+            };
+        }
 
-                // Simulate a decent input
-                var context = new EventContext();
-                context.Set("input_time_ms", 450.0);
+        static void PrintSummaryStatistics(List<(CustomerData customer, ChainResult result)> results, long totalMilliseconds)
+        {
+            var totalRecords = results.Count;
+            var premiumQueue = results.Count(r => r.result.TotalPrecisionScore >= 90);
+            var standardQueue = results.Count(r => r.result.TotalPrecisionScore >= 70 && r.result.TotalPrecisionScore < 90);
+            var manualReview = results.Count(r => r.result.TotalPrecisionScore >= 50 && r.result.TotalPrecisionScore < 70);
+            var quarantine = results.Count(r => r.result.TotalPrecisionScore < 50);
 
-                var result = await adaptiveChain.ExecuteWithResultsAsync();
+            var avgQuality = results.Average(r => r.result.TotalPrecisionScore);
+            var avgValidationsPassed = results.Average(r => r.result.SuccessCount);
+            var avgValidationsTotal = results.Average(r => r.result.TotalCount);
 
-                Console.WriteLine($"   Layers Active: {result.TotalCount}");
-                Console.WriteLine($"   Layers Hit: {result.SuccessCount}");
-                Console.WriteLine($"   Precision Score: {result.TotalPrecisionScore:F1}%");
-                Console.WriteLine($"   Grade: {result.GetGrade()}");
-                Console.WriteLine($"   Effect: {result.Context.GetOrDefault<string>("best_effect", "none")}");
+            Console.WriteLine($"Total Records Processed: {totalRecords}");
+            Console.WriteLine($"Average Quality Score: {avgQuality:F1}%");
+            Console.WriteLine($"Average Validations Passed: {avgValidationsPassed:F1}/{avgValidationsTotal:F1}");
+            Console.WriteLine();
+
+            // Performance metrics
+            Console.WriteLine("Performance Metrics:");
+            Console.WriteLine($"  Total Processing Time: {totalMilliseconds:N0}ms ({totalMilliseconds / 1000.0:F2}s)");
+            Console.WriteLine($"  Average Time Per Record: {totalMilliseconds / (double)totalRecords:F2}ms");
+            Console.WriteLine($"  Throughput: {totalRecords * 1000.0 / totalMilliseconds:F1} records/second");
+            Console.WriteLine();
+
+            Console.WriteLine("Routing Distribution:");
+            Console.WriteLine($"  Premium Queue (≥90%):        {premiumQueue,3} ({(premiumQueue * 100.0 / totalRecords):F1}%)");
+            Console.WriteLine($"  Standard Queue (70-89%):     {standardQueue,3} ({(standardQueue * 100.0 / totalRecords):F1}%)");
+            Console.WriteLine($"  Manual Review (50-69%):      {manualReview,3} ({(manualReview * 100.0 / totalRecords):F1}%)");
+            Console.WriteLine($"  Quarantine (<50%):           {quarantine,3} ({(quarantine * 100.0 / totalRecords):F1}%)");
+            Console.WriteLine();
+
+            Console.WriteLine("Grade Distribution:");
+            var gradeGroups = results.GroupBy(r => r.result.GetGrade()).OrderByDescending(g => g.Key);
+            foreach (var grade in gradeGroups)
+            {
+                var count = grade.Count();
+                Console.WriteLine($"  Grade {grade.Key}: {count,3} ({(count * 100.0 / totalRecords):F1}%)");
+            }
+            Console.WriteLine();
+
+            Console.WriteLine("Top Validation Issues:");
+            var allFailures = results
+                .SelectMany(r => r.result.EventResults.Where(e => !e.Success))
+                .GroupBy(e => e.EventName)
+                .OrderByDescending(g => g.Count())
+                .Take(5);
+
+            foreach (var issue in allFailures)
+            {
+                Console.WriteLine($"  {issue.Key}: {issue.Count()} failures ({(issue.Count() * 100.0 / totalRecords):F1}%)");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Quality Score Ranges:");
+            var ranges = new[] { (0, 50), (50, 60), (60, 70), (70, 80), (80, 90), (90, 101) };
+            foreach (var (min, max) in ranges)
+            {
+                var count = results.Count(r => r.result.TotalPrecisionScore >= min && r.result.TotalPrecisionScore < max);
+                var bar = new string('█', Math.Min(count * 50 / totalRecords, 50));
+                Console.WriteLine($"  {min,3}-{max - 1,3}%: {bar} {count}");
+            }
+        }
+
+        static async Task<ChainResult> ProcessCustomerData(CustomerData data, string label, bool quietMode = false)
+        {
+            if (!quietMode)
+            {
+                Console.WriteLine($"Processing: {label}");
+                Console.WriteLine($"  Email: {data.Email}");
+                Console.WriteLine($"  Phone: {data.Phone ?? "N/A"}");
+                Console.WriteLine($"  Name: {data.FirstName} {data.LastName}");
                 Console.WriteLine();
             }
-        }
 
-        /// <summary>
-        /// Demo 3: Combo System
-        /// Multiple sequential QTEs with graduated success throughout
-        /// </summary>
-        static async Task DemoComboSystem()
-        {
-            Console.WriteLine("📍 DEMO 3: Combo Attack System");
-            Console.WriteLine("   Three sequential QTEs with graduated precision");
-            Console.WriteLine("   Total score reflects overall performance\n");
+            // THIS IS THE MAGIC: One pipeline handles everything
+            var pipeline = BuildValidationPipeline();
 
-            // Create a lenient chain for the combo (can miss some hits)
-            var comboChain = EventChain.Lenient();
+            var context = pipeline.GetContext();
+            context.Set("customer_data", data);
 
-            // Hit 1: Opening strike (easier)
-            var hit1 = CreateQTESubChain("Hit 1", new[]
+            var result = await pipeline.ExecuteWithResultsAsync();
+
+            if (!quietMode)
             {
-                (1000.0, 50.0, "opener"),
-                (600.0, 100.0, "strong_opener")
-            });
+                // Results automatically aggregated
+                Console.WriteLine($"  Overall Quality: {result.TotalPrecisionScore:F1}%");
+                Console.WriteLine($"  Grade: {result.GetGrade()}");
+                Console.WriteLine($"  Validations Passed: {result.SuccessCount}/{result.TotalCount}");
 
-            // Hit 2: Follow-up (medium)
-            var hit2 = CreateQTESubChain("Hit 2", new[]
-            {
-                (800.0, 75.0, "followup"),
-                (400.0, 125.0, "power_followup")
-            });
+                // Routing decision based on quality
+                var routing = DetermineRouting(result.TotalPrecisionScore);
+                Console.WriteLine($"  Routing: {routing}");
 
-            // Hit 3: Finisher (hardest, most rewarding)
-            var hit3 = CreateQTESubChain("Hit 3", new[]
-            {
-                (600.0, 100.0, "finisher"),
-                (300.0, 150.0, "devastating_finisher"),
-                (100.0, 300.0, "ultimate_finisher")
-            });
-
-            comboChain.AddEvent(new SubChainEvent(hit1, "Opening Strike"));
-            comboChain.AddEvent(new SubChainEvent(hit2, "Follow-Up"));
-            comboChain.AddEvent(new SubChainEvent(hit3, "Finisher"));
-
-            // Simulate a combo attempt with varying precision
-            var context = new EventContext();
-
-            // Hit 1: Hit outer ring
-            context.Set("input_time_ms", 700.0);
-            await hit1.ExecuteWithResultsAsync();
-
-            // Hit 2: Hit both rings
-            context.Set("input_time_ms", 350.0);
-            await hit2.ExecuteWithResultsAsync();
-
-            // Hit 3: Perfect! Hit all three rings
-            context.Set("input_time_ms", 80.0);
-            var finalResult = await hit3.ExecuteWithResultsAsync();
-
-            Console.WriteLine("   Combo Results:");
-            Console.WriteLine($"   Hit 1: 1/2 rings (Outer only) - OK");
-            Console.WriteLine($"   Hit 2: 2/2 rings (Both) - Great!");
-            Console.WriteLine($"   Hit 3: 3/3 rings (PERFECT) - Amazing!");
-            Console.WriteLine();
-            Console.WriteLine($"   Total Score: {context.GetOrDefault<double>("total_score")}");
-            Console.WriteLine($"   Final Effect: {context.GetOrDefault<string>("best_effect", "none")}");
-            Console.WriteLine($"   Player Performance: Mastery Achieved!");
-        }
-
-        // Helper methods
-
-        static async Task SimulateQTEInput(string label, EventChain qteChain, double inputTimeMs)
-        {
-            Console.WriteLine($"   Testing: {label} (input at {inputTimeMs}ms)");
-
-            var context = new EventContext();
-            context.Set("input_time_ms", inputTimeMs);
-
-            var result = await qteChain.ExecuteWithResultsAsync();
-
-            Console.WriteLine($"   ├─ Rings Hit: {result.SuccessCount}/{result.TotalCount}");
-            Console.WriteLine($"   ├─ Total Score: {context.GetOrDefault<double>("total_score")}");
-            Console.WriteLine($"   ├─ Precision: {result.TotalPrecisionScore:F1}%");
-            Console.WriteLine($"   ├─ Grade: {result.GetGrade()}");
-            Console.WriteLine($"   └─ Effect: {context.GetOrDefault<string>("best_effect", "miss")}");
-            Console.WriteLine();
-        }
-
-        static EventChain CreateAdaptiveQTE(int playerSkill)
-        {
-            var chain = EventChain.BestEffort();
-
-            // Always have outer ring (accessible to all)
-            chain.AddEvent(new PrecisionRingEvent(
-                name: "Outer Ring",
-                windowMs: 1000,
-                score: 50,
-                effect: "normal"
-            ));
-
-            // Add middle ring for intermediate+ players
-            if (playerSkill >= 4)
-            {
-                chain.AddEvent(new PrecisionRingEvent(
-                    name: "Middle Ring",
-                    windowMs: 500,
-                    score: 100,
-                    effect: "skilled"
-                ));
+                // Audit trail automatically built
+                Console.WriteLine($"\n  Validation Details:");
+                foreach (var eventResult in result.EventResults)
+                {
+                    var status = eventResult.Success ? "✓" : "✗";
+                    Console.WriteLine($"    {status} {eventResult.EventName}: {eventResult.PrecisionScore:F0}%");
+                    if (!eventResult.Success)
+                    {
+                        Console.WriteLine($"      Error: {eventResult.ErrorMessage}");
+                    }
+                }
             }
 
-            // Add center ring for expert players
-            if (playerSkill >= 7)
-            {
-                chain.AddEvent(new PrecisionRingEvent(
-                    name: "Center Ring",
-                    windowMs: 200,
-                    score: 200,
-                    effect: "masterful"
-                ));
-            }
-
-            return chain;
+            return result;
         }
 
-        static EventChain CreateQTESubChain(string name, (double windowMs, double score, string effect)[] layers)
+        static EventChain BuildValidationPipeline()
         {
-            var chain = EventChain.BestEffort();
+            // LENIENT mode: Some validations can fail, but we collect all results
+            var pipeline = EventChain.Lenient();
 
-            foreach (var (windowMs, score, effect) in layers)
-            {
-                chain.AddEvent(new PrecisionRingEvent(
-                    name: $"{name} - {windowMs}ms",
-                    windowMs: windowMs,
-                    score: score,
-                    effect: effect
-                ));
-            }
+            // Critical validations (must pass)
+            pipeline.AddEvent(new ValidateRequiredFields());
+            pipeline.AddEvent(new ValidateEmailFormat());
 
-            return chain;
-        }
-    }
+            // Important validations (failures lower quality score)
+            pipeline.AddEvent(new ValidatePhoneFormat());
+            pipeline.AddEvent(new ValidateBusinessData());
 
-    /// <summary>
-    /// A precision ring event for QTE systems.
-    /// Represents a single timing window with a score and effect.
-    /// </summary>
-    public class PrecisionRingEvent : TimingEvent
-    {
-        private readonly string _name;
+            // Optional enrichments (best effort)
+            pipeline.AddEvent(new EnrichWithGeolocation());
+            pipeline.AddEvent(new EnrichWithCreditScore());
 
-        public PrecisionRingEvent(string name, double windowMs, double score, string effect)
-            : base(windowMs, score, effect)
-        {
-            _name = name;
+            // Risk assessment (depends on all previous validations)
+            pipeline.AddEvent(new CalculateRiskScore());
+
+            return pipeline;
         }
 
-        public override string EventName => _name;
-
-        protected override double CalculatePrecisionWithinWindow(double actualTimeMs)
+        static string DetermineRouting(double qualityScore)
         {
-            // More forgiving precision curve for outer rings
-            // Perfect score if within first 20% of window
-            if (actualTimeMs <= WindowMs * 0.2)
+            return qualityScore switch
             {
-                return 100.0;
-            }
-
-            // Linear falloff after that
-            var ratio = (WindowMs - actualTimeMs) / (WindowMs * 0.8);
-            return PrecisionScore + (ratio * (100.0 - PrecisionScore));
+                >= 90 => "Premium Queue (auto-approve)",
+                >= 70 => "Standard Queue (standard review)",
+                >= 50 => "Manual Review Queue (requires human approval)",
+                _ => "Quarantine Queue (needs extensive review)"
+            };
         }
     }
 }

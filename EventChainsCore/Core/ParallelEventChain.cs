@@ -1,6 +1,4 @@
-﻿using EventChains.Core.Events;
-
-namespace EventChains.Core
+﻿namespace EventChainsCore
 {
     /// <summary>
     /// A parallel variant of EventChain that executes events concurrently.
@@ -100,58 +98,6 @@ namespace EventChains.Core
             if (result.TotalCount == 0) return 0.0;
             var totalScore = result.EventResults.Sum(r => r.PrecisionScore);
             return totalScore / result.TotalCount;
-        }
-    }
-
-    /// <summary>
-    /// Example use case for parallel execution: Send notifications to multiple users.
-    /// Events are completely independent, so parallel execution makes sense.
-    /// </summary>
-    public class SendNotificationEvent : BaseEvent
-    {
-        private readonly string _userId;
-        private readonly string _message;
-
-        public SendNotificationEvent(string userId, string message)
-        {
-            _userId = userId;
-            _message = message;
-        }
-
-        public override string EventName => $"SendNotification_{_userId}";
-
-        public override async Task<EventResult> ExecuteAsync(IEventContext context)
-        {
-            // Simulate sending notification (I/O operation)
-            await Task.Delay(100); // Pretend this is an HTTP call
-
-            // In real code: await notificationService.SendAsync(_userId, _message);
-
-            return Success(new { UserId = _userId, MessageSent = true });
-        }
-    }
-
-    /// <summary>
-    /// Example: Parallel fan-out for notifications
-    /// </summary>
-    public class ParallelNotificationExample
-    {
-        public static async Task Run()
-        {
-            var parallelChain = new ParallelEventChain()
-                .WithMaxParallelism(10); // Max 10 concurrent notifications
-
-            var userIds = new[] { "user1", "user2", "user3", "user4", "user5" };
-            foreach (var userId in userIds)
-            {
-                parallelChain.AddEvent(new SendNotificationEvent(userId, "Hello!"));
-            }
-
-            var result = await parallelChain.ExecuteWithResultsAsync();
-
-            Console.WriteLine($"Notifications sent: {result.SuccessCount}/{result.TotalCount}");
-            Console.WriteLine($"Execution time: {result.ExecutionTimeMs}ms");
-            // Much faster than sequential: ~100ms vs ~500ms
         }
     }
 }
