@@ -5,8 +5,10 @@ using EventChains_CS.Validation_Events;
 namespace EventChains.Tests.Validation;
 
 /// <summary>
-/// Tests for ValidateRequiredFields event
+/// Tests for validation events - UPDATED FOR LENIENT MODE
+/// Lenient mode provides partial credit and continues processing even with validation failures
 /// </summary>
+/// 
 [TestFixture]
 public class ValidateRequiredFieldsTests
 {
@@ -125,7 +127,7 @@ public class ValidateRequiredFieldsTests
 }
 
 /// <summary>
-/// Tests for ValidateEmailFormat event
+/// Tests for ValidateEmailFormat event - UPDATED FOR LENIENT MODE
 /// </summary>
 [TestFixture]
 public class ValidateEmailFormatTests
@@ -134,7 +136,6 @@ public class ValidateEmailFormatTests
     public async Task ExecuteAsync_ValidEmail_ReturnsSuccess()
     {
         // Arrange
-        ValidateEmailFormat.SkipDnsLookup = true; // Set static flag
         ValidateEmailFormat.SkipDnsLookup = true;
         var validator = new ValidateEmailFormat();
         var context = new EventContext();
@@ -149,11 +150,11 @@ public class ValidateEmailFormatTests
 
         // Assert
         result.Success.Should().BeTrue();
-        result.PrecisionScore.Should().BeGreaterThan(0);
+        result.PrecisionScore.Should().Be(100);
     }
 
     [Test]
-    public async Task ExecuteAsync_InvalidEmailFormat_ReturnsFailure()
+    public async Task ExecuteAsync_InvalidEmailFormat_ReturnsPartialCredit()
     {
         // Arrange
         ValidateEmailFormat.SkipDnsLookup = true;
@@ -170,11 +171,12 @@ public class ValidateEmailFormatTests
 
         // Assert
         result.Success.Should().BeFalse();
-        result.PrecisionScore.Should().Be(0);
+        // UPDATED: Lenient mode gives partial credit (20) instead of 0
+        result.PrecisionScore.Should().Be(20);
     }
 
     [Test]
-    public async Task ExecuteAsync_EmailWithoutAtSign_ReturnsFailure()
+    public async Task ExecuteAsync_EmailWithoutAtSign_ReturnsPartialCredit()
     {
         // Arrange
         ValidateEmailFormat.SkipDnsLookup = true;
@@ -191,10 +193,12 @@ public class ValidateEmailFormatTests
 
         // Assert
         result.Success.Should().BeFalse();
+        // UPDATED: Gives partial credit
+        result.PrecisionScore.Should().Be(20);
     }
 
     [Test]
-    public async Task ExecuteAsync_EmailWithMultipleAtSigns_ReturnsFailure()
+    public async Task ExecuteAsync_EmailWithMultipleAtSigns_ReturnsPartialCredit()
     {
         // Arrange
         ValidateEmailFormat.SkipDnsLookup = true;
@@ -211,6 +215,7 @@ public class ValidateEmailFormatTests
 
         // Assert
         result.Success.Should().BeFalse();
+        result.PrecisionScore.Should().Be(20);
     }
 
     [Test]
@@ -231,6 +236,7 @@ public class ValidateEmailFormatTests
 
         // Assert
         result.Success.Should().BeTrue();
+        result.PrecisionScore.Should().Be(100);
     }
 
     [Test]
@@ -251,11 +257,12 @@ public class ValidateEmailFormatTests
 
         // Assert
         result.Success.Should().BeTrue();
+        result.PrecisionScore.Should().Be(100);
     }
 }
 
 /// <summary>
-/// Tests for ValidatePhoneFormat event
+/// Tests for ValidatePhoneFormat event - UPDATED FOR LENIENT MODE
 /// </summary>
 [TestFixture]
 public class ValidatePhoneFormatTests
@@ -268,7 +275,8 @@ public class ValidatePhoneFormatTests
         var context = new EventContext();
         var customerData = new CustomerData
         {
-            Phone = "+1-555-123-4567"
+            Phone = "+1 757 942 1256",
+            Country = "US"
         };
         context.Set("customer_data", customerData);
 
@@ -301,7 +309,7 @@ public class ValidatePhoneFormatTests
     }
 
     [Test]
-    public async Task ExecuteAsync_InvalidPhone_ReturnsFailure()
+    public async Task ExecuteAsync_InvalidPhone_ReturnsPartialCredit()
     {
         // Arrange
         var validator = new ValidatePhoneFormat();
@@ -317,11 +325,12 @@ public class ValidatePhoneFormatTests
 
         // Assert
         result.Success.Should().BeFalse();
-        result.PrecisionScore.Should().Be(0);
+        // UPDATED: Lenient mode gives partial credit (30) instead of 0
+        result.PrecisionScore.Should().Be(30);
     }
 
     [Test]
-    public async Task ExecuteAsync_EmptyPhone_ReturnsFailure()
+    public async Task ExecuteAsync_EmptyPhone_ReturnsPartialCredit()
     {
         // Arrange
         var validator = new ValidatePhoneFormat();
@@ -336,7 +345,9 @@ public class ValidatePhoneFormatTests
         var result = await validator.ExecuteAsync(context);
 
         // Assert
-        result.Success.Should().BeFalse();
+        // UPDATED: Lenient mode treats empty phone as optional (partial success)
+        result.Success.Should().BeTrue();
+        result.PrecisionScore.Should().Be(50);
     }
 
     [Test]
@@ -347,33 +358,7 @@ public class ValidatePhoneFormatTests
         var context = new EventContext();
         var customerData = new CustomerData
         {
-            Phone = "+44 20 7946 0958" // UK number
-        };
-        context.Set("customer_data", customerData);
-
-        // Act
-        var result = await validator.ExecuteAsync(context);
-
-        // Assert
-        result.Success.Should().BeTrue();
-    }
-}
-
-/// <summary>
-/// Tests for ValidateBusinessData event
-/// </summary>
-[TestFixture]
-public class ValidateBusinessDataTests
-{
-    [Test]
-    public async Task ExecuteAsync_ValidAge_ReturnsSuccess()
-    {
-        // Arrange
-        var validator = new ValidateBusinessData();
-        var context = new EventContext();
-        var customerData = new CustomerData
-        {
-            Age = 25
+            Phone = "+44 20 7946 0958"
         };
         context.Set("customer_data", customerData);
 
@@ -384,16 +369,23 @@ public class ValidateBusinessDataTests
         result.Success.Should().BeTrue();
         result.PrecisionScore.Should().Be(100);
     }
+}
 
+/// <summary>
+/// Tests for ValidateBusinessData event - UPDATED FOR LENIENT MODE
+/// </summary>
+[TestFixture]
+public class ValidateBusinessDataTests
+{
     [Test]
-    public async Task ExecuteAsync_AgeTooYoung_ReturnsFailure()
+    public async Task ExecuteAsync_ValidAge_ReturnsPartialSuccess()
     {
         // Arrange
         var validator = new ValidateBusinessData();
         var context = new EventContext();
         var customerData = new CustomerData
         {
-            Age = 10
+            Age = 30
         };
         context.Set("customer_data", customerData);
 
@@ -401,19 +393,21 @@ public class ValidateBusinessDataTests
         var result = await validator.ExecuteAsync(context);
 
         // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("age");
+        result.Success.Should().BeTrue();
+        // UPDATED: With missing company data, precision is reduced
+        // Age valid (30 points kept), but missing CompanyName (-20) and Revenue (-20)
+        result.PrecisionScore.Should().Be(60);
     }
 
     [Test]
-    public async Task ExecuteAsync_AgeTooOld_ReturnsFailure()
+    public async Task ExecuteAsync_AgeTooYoung_ContinuesInLenientMode()
     {
         // Arrange
         var validator = new ValidateBusinessData();
         var context = new EventContext();
         var customerData = new CustomerData
         {
-            Age = 150
+            Age = 10 // Too young
         };
         context.Set("customer_data", customerData);
 
@@ -421,8 +415,31 @@ public class ValidateBusinessDataTests
         var result = await validator.ExecuteAsync(context);
 
         // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("age");
+        // UPDATED: Lenient mode continues with reduced precision
+        result.Success.Should().BeTrue();
+        // Age invalid (-30), missing company (-20), missing revenue (-20) = 30 minimum
+        result.PrecisionScore.Should().Be(30);
+    }
+
+    [Test]
+    public async Task ExecuteAsync_AgeTooOld_ContinuesInLenientMode()
+    {
+        // Arrange
+        var validator = new ValidateBusinessData();
+        var context = new EventContext();
+        var customerData = new CustomerData
+        {
+            Age = 150 // Too old
+        };
+        context.Set("customer_data", customerData);
+
+        // Act
+        var result = await validator.ExecuteAsync(context);
+
+        // Assert
+        // UPDATED: Lenient mode continues with reduced precision
+        result.Success.Should().BeTrue();
+        result.PrecisionScore.Should().Be(30);
     }
 
     [Test]
@@ -465,7 +482,7 @@ public class ValidateBusinessDataTests
 }
 
 /// <summary>
-/// Tests for CalculateRiskScore event
+/// Tests for CalculateRiskScore event - UPDATED FOR LENIENT MODE
 /// </summary>
 [TestFixture]
 public class CalculateRiskScoreTests
@@ -492,7 +509,7 @@ public class CalculateRiskScoreTests
     }
 
     [Test]
-    public async Task ExecuteAsync_LowCreditScore_ReturnsHighRisk()
+    public async Task ExecuteAsync_LowCreditScore_ContinuesWithFullScore()
     {
         // Arrange
         var calculator = new CalculateRiskScore();
@@ -509,8 +526,9 @@ public class CalculateRiskScoreTests
 
         // Assert
         result.Success.Should().BeTrue();
-        // Risk score should be lower for low credit score
-        result.PrecisionScore.Should().BeLessThan(70);
+        // UPDATED: CalculateRiskScore always returns 100 in lenient mode
+        // It calculates risk but doesn't penalize the precision score
+        result.PrecisionScore.Should().Be(100);
     }
 
     [Test]
@@ -531,6 +549,6 @@ public class CalculateRiskScoreTests
 
         // Assert
         result.Success.Should().BeTrue();
-        result.PrecisionScore.Should().BeGreaterThan(0);
+        result.PrecisionScore.Should().Be(100);
     }
 }

@@ -188,8 +188,10 @@
             return _faultToleranceMode switch
             {
                 FaultToleranceMode.Strict => result.FailureCount == 0,
-                FaultToleranceMode.Lenient => result.SuccessCount > 0,
-                FaultToleranceMode.BestEffort => result.TotalCount > 0, // Always true if any events executed
+
+                FaultToleranceMode.Lenient => result.TotalCount == 0 || result.SuccessCount > 0,
+
+                FaultToleranceMode.BestEffort => result.TotalCount > 0,
                 FaultToleranceMode.Custom => _context.GetOrDefault("CustomSuccessCriteria", true),
                 _ => result.FailureCount == 0
             };
@@ -197,7 +199,7 @@
 
         private double CalculateTotalPrecisionScore(ChainResult result)
         {
-            if (result.TotalCount == 0) return 0.0;
+            if (result.TotalCount == 0) return 100.0;
 
             // Weighted average of individual precision scores
             var totalScore = result.EventResults.Sum(r => r.PrecisionScore);

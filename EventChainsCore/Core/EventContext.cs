@@ -1,4 +1,6 @@
-﻿namespace EventChainsCore
+﻿using System.Collections.Concurrent;
+
+namespace EventChainsCore
 {
     /// <summary>
     /// Provides a concrete implementation of the event context with enhanced features
@@ -6,7 +8,7 @@
     /// </summary>
     public class EventContext : IEventContext
     {
-        private readonly Dictionary<string, object> _data = new();
+        private readonly ConcurrentDictionary<string, object> _data = new();
 
         public T Get<T>(string key) => (T)_data[key];
 

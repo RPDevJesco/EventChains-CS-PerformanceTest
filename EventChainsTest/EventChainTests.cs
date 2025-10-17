@@ -3,7 +3,7 @@
 namespace EventChains.Tests.Core;
 
 /// <summary>
-/// Tests for the core EventChain orchestration engine - CORRECTED VERSION
+/// Tests for the core EventChain orchestration engine - UPDATED FOR LENIENT MODE
 /// </summary>
 [TestFixture]
 public class EventChainTests
@@ -67,6 +67,7 @@ public class EventChainTests
 
         // Assert
         result.Should().NotBeNull();
+        // UPDATED: Lenient mode treats empty chain as success
         result.Success.Should().BeTrue();
         result.EventResults.Should().BeEmpty();
         result.TotalPrecisionScore.Should().Be(100.0);
@@ -234,7 +235,7 @@ public class EventChainTests
     }
 
     [Test]
-    public void ChainResult_GetGrade_HighScore_ReturnsA()
+    public void ChainResult_GetGrade_HighScore_ReturnsS()
     {
         // Arrange
         var chain = EventChain.Lenient();
@@ -245,6 +246,23 @@ public class EventChainTests
         var grade = result.GetGrade();
 
         // Assert
+        // UPDATED: Score of 95 returns "S" grade (>= 95)
+        grade.Should().Be("S");
+    }
+
+    [Test]
+    public void ChainResult_GetGrade_HighScore_ReturnsA()
+    {
+        // Arrange
+        var chain = EventChain.Lenient();
+        chain.AddEvent(new TestPartialSuccessEvent(92));
+
+        // Act
+        var result = chain.ExecuteWithResultsAsync().GetAwaiter().GetResult();
+        var grade = result.GetGrade();
+
+        // Assert
+        // UPDATED: Score of 92 returns "A" grade (90-94)
         grade.Should().Be("A");
     }
 
