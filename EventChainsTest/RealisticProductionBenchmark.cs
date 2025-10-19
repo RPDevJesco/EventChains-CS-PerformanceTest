@@ -283,11 +283,12 @@ namespace EventChains.Tests.Performance
                 .AddEvent(new ValidateRequiredFields())
                 .AddEvent(new ValidateEmailFormat());
             
+            var ctx = pipeline.GetContext();
+            ctx.Set("customer_data", customer);
+            
             // Warm-up
             for (int i = 0; i < 100; i++)
             {
-                var ctx = pipeline.GetContext();
-                ctx.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             
@@ -299,8 +300,6 @@ namespace EventChains.Tests.Performance
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                var context = pipeline.GetContext();
-                context.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             sw.Stop();
@@ -319,12 +318,13 @@ namespace EventChains.Tests.Performance
                 .AddEvent(new ValidateRequiredFields())
                 .AddEvent(new ValidateEmailFormat());
             
+            var ctx = pipeline.GetContext();
+            ctx.Set("is_authenticated", true);
+            ctx.Set("customer_data", customer);
+            
             // Warm-up
             for (int i = 0; i < 100; i++)
             {
-                var ctx = pipeline.GetContext();
-                ctx.Set("is_authenticated", true);
-                ctx.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             
@@ -336,9 +336,6 @@ namespace EventChains.Tests.Performance
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                var context = pipeline.GetContext();
-                context.Set("is_authenticated", true);
-                context.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             sw.Stop();
@@ -409,11 +406,12 @@ namespace EventChains.Tests.Performance
                     CachingMiddleware.SimpleKeyGenerator, cache));
             }
             
+            var ctx = pipeline.GetContext();
+            ctx.Set("customer_data", customer);
+            
             // Warm-up
             for (int i = 0; i < 100; i++)
             {
-                var ctx = pipeline.GetContext();
-                ctx.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             
@@ -427,8 +425,6 @@ namespace EventChains.Tests.Performance
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                var context = pipeline.GetContext();
-                context.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             sw.Stop();
@@ -453,12 +449,13 @@ namespace EventChains.Tests.Performance
                 .AddEvent(new ValidateRequiredFields())
                 .AddEvent(new ValidateEmailFormat());
             
+            var ctx = pipeline.GetContext();
+            ctx.Set("is_authenticated", true);
+            ctx.Set("customer_data", customer);
+            
             // Warm-up
             for (int i = 0; i < 100; i++)
             {
-                var ctx = pipeline.GetContext();
-                ctx.Set("is_authenticated", true);
-                ctx.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             
@@ -472,9 +469,6 @@ namespace EventChains.Tests.Performance
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                var context = pipeline.GetContext();
-                context.Set("is_authenticated", true);
-                context.Set("customer_data", customer);
                 pipeline.ExecuteWithResultsAsync();
             }
             sw.Stop();
