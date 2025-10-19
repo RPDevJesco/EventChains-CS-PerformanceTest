@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using EventChainsCore;
 using EventChains_CS.Validation_Events;
+using EventChainsCore.Middleware;
 
 namespace EventChains_CS
 {
@@ -259,7 +260,7 @@ namespace EventChains_CS
             }
 
             // THIS IS THE MAGIC: One pipeline handles everything
-            var pipeline = BuildValidationPipeline();
+            var pipeline = Test();
 
             var context = pipeline.GetContext();
             context.Set("customer_data", data);
@@ -313,6 +314,24 @@ namespace EventChains_CS
             // Risk assessment (depends on all previous validations)
             pipeline.AddEvent(new CalculateRiskScore());
 
+            return pipeline;
+        }
+
+        static EventChain Test()
+        {
+            var pipeline = EventChain.Lenient()
+                .UseMiddleware(TimingMiddleware.Create())
+                .UseMiddleware(RateLimitingMiddleware.Create(
+                    maxRequests: 100,
+                    timeWindowSeconds: 60
+                ))
+                .AddEvent(new ValidateRequiredFields())
+                .AddEvent(new ValidateEmailFormat())
+                .AddEvent(new ValidatePhoneFormat())
+                .AddEvent(new ValidateBusinessData())
+                .AddEvent(new EnrichWithGeolocation())
+                .AddEvent(new EnrichWithCreditScore())
+                .AddEvent(new CalculateRiskScore());
             return pipeline;
         }
 

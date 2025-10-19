@@ -6,6 +6,7 @@ using EventChains_CS.Validation_Events;
 using EventChainsCore;
 
 using System.Collections.Concurrent;
+using EventChainsCore.Middleware;
 
 namespace EventChains.Tests.Performance;
 
@@ -313,6 +314,11 @@ public class BenchmarkTests
             if (size < 1000000)
             {
                 var warmupPipeline = EventChain.Lenient();
+                warmupPipeline.UseMiddleware(TimingMiddleware.Create());
+                warmupPipeline.UseMiddleware(RateLimitingMiddleware.Create(
+                    maxRequests: 100,
+                    timeWindowSeconds: 60
+                ));
                 warmupPipeline.AddEvent(new ValidateRequiredFields());
                 warmupPipeline.AddEvent(new ValidateEmailFormat());
                 for (int i = 0; i < Math.Min(100, size / 10); i++)
@@ -337,6 +343,11 @@ public class BenchmarkTests
                 }
 
                 var pipeline = EventChain.Lenient();
+                pipeline.UseMiddleware(TimingMiddleware.Create());
+                pipeline.UseMiddleware(RateLimitingMiddleware.Create(
+                    maxRequests: 100,
+                    timeWindowSeconds: 60
+                ));
                 pipeline.AddEvent(new ValidateRequiredFields());
                 pipeline.AddEvent(new ValidateEmailFormat());
 
